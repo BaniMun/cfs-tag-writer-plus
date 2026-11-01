@@ -2,7 +2,6 @@
 
 #include <furi.h>
 #include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
 
 #include "src/crypto/cfs_crypto.h"
@@ -197,9 +196,6 @@ bool cfs_storage_exists_in(Storage* storage, const char* dir, const char* name) 
     return storage_file_exists(storage, path);
 }
 
-static int cfs_storage_name_cmp(const void* a, const void* b) {
-    return strcmp((const char*)a, (const char*)b);
-}
 
 size_t cfs_storage_list(
     Storage* storage,
@@ -226,7 +222,17 @@ size_t cfs_storage_list(
     }
     storage_dir_close(file);
     storage_file_free(file);
-    qsort(names, count, CFS_STORAGE_NAME_MAX, cfs_storage_name_cmp);
+    // Insertion sort, A-Z (qsort isn't exported to apps; lists are short).
+    char tmp[CFS_STORAGE_NAME_MAX];
+    for(size_t i = 1; i < count; i++) {
+        memcpy(tmp, names[i], CFS_STORAGE_NAME_MAX);
+        size_t j = i;
+        while(j > 0 && strcmp(names[j - 1], tmp) > 0) {
+            memcpy(names[j], names[j - 1], CFS_STORAGE_NAME_MAX);
+            j--;
+        }
+        memcpy(names[j], tmp, CFS_STORAGE_NAME_MAX);
+    }
     return count;
 }
 
